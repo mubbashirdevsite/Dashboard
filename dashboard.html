@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analytics Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-deep: #080e2a;
+    --bg-card: #0d1640;
+    --bg-card2: #101a4a;
+    --accent-cyan: #00e5ff;
+    --accent-blue: #1565ff;
+    --accent-purple: #7c4dff;
+    --accent-pink: #e040fb;
+    --accent-green: #00e676;
+    --accent-orange: #ff6d00;
+    --text-primary: #e8eaf6;
+    --text-muted: #7986cb;
+    --border: rgba(100,140,255,0.15);
+    --glow-cyan: 0 0 18px rgba(0,229,255,0.4);
+    --glow-blue: 0 0 18px rgba(21,101,255,0.4);
+  }
+
+  body {
+    font-family: 'Exo 2', sans-serif;
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px 10px 14px;
+    background: linear-gradient(90deg, #0a1235 0%, #0d1640 100%);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.3rem; color: var(--accent-cyan);
+    text-shadow: var(--glow-cyan);
+  }
+  .logo svg { width: 28px; height: 28px; }
+  .search-bar {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 16px;
+    width: 300px;
+  }
+  .search-bar input {
+    background: none; border: none; outline: none;
+    color: var(--text-primary); font-family: inherit; font-size: 0.85rem;
+    width: 100%;
+  }
+  .search-bar svg { color: var(--text-muted); flex-shrink: 0; }
+  .user-info {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 0.85rem;
+  }
+  .avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; border: 2px solid var(--accent-cyan);
+    box-shadow: var(--glow-cyan);
+  }
+  .user-name { font-weight: 600; color: var(--text-primary); }
+  .user-logout { font-size: 0.7rem; color: var(--text-muted); cursor: pointer; }
+  .icon-btn {
+    width: 28px; height: 28px; display: flex; align-items: center;
+    justify-content: center; cursor: pointer; color: var(--text-muted);
+    transition: color .2s;
+  }
+  .icon-btn:hover { color: var(--accent-cyan); }
+
+  /* ── LAYOUT ── */
+  .layout { display: flex; height: calc(100vh - 54px); }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 52px; background: #0a1235;
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    align-items: center; padding: 16px 0; gap: 18px;
+    flex-shrink: 0;
+  }
+  .nav-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--text-muted); transition: all .2s;
+    position: relative;
+  }
+  .nav-icon.active {
+    background: rgba(0,229,255,0.12);
+    color: var(--accent-cyan);
+    box-shadow: var(--glow-cyan);
+  }
+  .nav-icon:hover { color: var(--accent-cyan); background: rgba(0,229,255,0.08); }
+  .nav-badge {
+    position: absolute; top: -4px; right: -4px;
+    background: var(--accent-orange); color: #fff;
+    font-size: 0.6rem; border-radius: 50%;
+    width: 14px; height: 14px; display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ── MAIN CONTENT ── */
+  .main { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+
+  .grid-row { display: grid; gap: 12px; }
+  .row-top { grid-template-columns: 300px 1fr 280px 220px; }
+  .row-mid { grid-template-columns: 300px 1fr; }
+  .row-bot { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .row-bot2 { grid-template-columns: 1fr 200px; }
+
+  /* right column stacks */
+  .right-col { display: flex; flex-direction: column; gap: 12px; flex: 1; }
+  .row-right-top { display: grid; grid-template-columns: 1fr 220px; gap: 12px; }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+    opacity: 0.5;
+  }
+  .card-title {
+    font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;
+    letter-spacing: 1px; margin-bottom: 8px;
+  }
+  .card-value {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.6rem; font-weight: 700; color: var(--accent-cyan);
+    text-shadow: var(--glow-cyan);
+  }
+
+  /* ── MINI SPARKLINE CARD (top-left) ── */
+  .spark-card { display: flex; align-items: center; gap: 10px; }
+  .spark-card canvas { flex: 1; }
+  .donut-small { position: relative; width: 60px; height: 60px; flex-shrink: 0; }
+  .donut-small canvas { position: absolute; top: 0; left: 0; }
+  .donut-label {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    font-family: 'Orbitron', sans-serif; font-size: 0.75rem; font-weight: 700;
+    color: var(--accent-cyan);
+  }
+
+  /* ── STAT WIDGETS ── */
+  .stat-row { display: flex; gap: 10px; margin-top: 8px; }
+  .stat-box {
+    flex: 1; background: rgba(0,229,255,0.06);
+    border: 1px solid rgba(0,229,255,0.12);
+    border-radius: 8px; padding: 8px;
+    font-size: 0.7rem; color: var(--text-muted);
+  }
+  .stat-box strong { display: block; font-size: 1rem; color: var(--text-primary); }
+  .stat-box .delta { font-size: 0.65rem; }
+  .up { color: var(--accent-green); }
+  .down { color: var(--accent-pink); }
+
+  /* ── LINE CHART CARD ── */
+  .chart-header { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; flex-wrap: wrap; }
+  .chart-tab {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 0.75rem; cursor: pointer; color: var(--text-muted);
+    padding: 3px 8px; border-radius: 12px; transition: all .2s;
+  }
+  .chart-tab.active { background: rgba(0,229,255,0.12); color: var(--accent-cyan); }
+  .chart-tab .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* ── TIME SCHEDULE CARD ── */
+  .time-labels { display: flex; justify-content: space-between; font-size: 0.6rem; color: var(--text-muted); margin-bottom: 6px; }
+  .hex-container { display: flex; justify-content: center; align-items: center; padding: 10px 0; }
+  .progress-bars { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+  .pb-row { display: flex; align-items: center; gap: 6px; font-size: 0.65rem; color: var(--text-muted); }
+  .pb-row label { width: 10px; }
+  .pb-track { flex: 1; height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+  .pb-fill { height: 100%; border-radius: 2px; background: var(--accent-cyan); transition: width 1s ease; }
+
+  /* ── SMALL DONUT ROW ── */
+  .donut-row { display: flex; justify-content: space-between; }
+  .donut-item { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+  .donut-item .pct { font-family: 'Orbitron', sans-serif; font-size: 0.8rem; color: var(--accent-cyan); }
+  .donut-item .lbl { font-size: 0.6rem; color: var(--text-muted); text-align: center; }
+
+  /* ── BIG DONUT ── */
+  .big-donut-wrap { display: flex; gap: 14px; align-items: center; }
+  .big-donut-rel { position: relative; width: 160px; height: 160px; flex-shrink: 0; }
+  .big-donut-center {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    text-align: center;
+  }
+  .big-donut-center strong { font-family: 'Orbitron', sans-serif; font-size: 1.4rem; color: var(--text-primary); }
+  .legend-list { display: flex; flex-direction: column; gap: 5px; font-size: 0.65rem; }
+  .legend-item { display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  /* ── RADAR CARD ── */
+  .radar-wrap { display: flex; justify-content: center; }
+
+  /* ── GROWTH CARD ── */
+  .growth-val {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2.2rem; font-weight: 700;
+    color: var(--accent-cyan); text-shadow: var(--glow-cyan);
+    text-align: center; margin: 6px 0;
+  }
+
+  /* ── CANDLESTICK CARD ── */
+  .candle-area { width: 100%; height: 120px; }
+
+  /* ── SUPPORT BAR ── */
+  .support-bar {
+    background: linear-gradient(90deg, var(--accent-orange), #ff4500);
+    border-radius: 8px; padding: 8px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: auto;
+  }
+  .support-bar span { font-size: 0.75rem; font-weight: 600; }
+  .support-icons { display: flex; gap: 8px; }
+
+  /* ── SCROLLBAR ── */
+  .main::-webkit-scrollbar { width: 4px; }
+  .main::-webkit-scrollbar-track { background: transparent; }
+  .main::-webkit-scrollbar-thumb { background: var(--accent-blue); border-radius: 2px; }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .card { animation: fadeUp .5s ease both; }
+  .card:nth-child(1) { animation-delay: .05s; }
+  .card:nth-child(2) { animation-delay: .1s; }
+  .card:nth-child(3) { animation-delay: .15s; }
+  .card:nth-child(4) { animation-delay: .2s; }
+  @keyframes pulse-glow {
+    0%,100% { box-shadow: 0 0 8px rgba(0,229,255,0.3); }
+    50% { box-shadow: 0 0 20px rgba(0,229,255,0.7); }
+  }
+  .card.active { animation: fadeUp .5s ease both, pulse-glow 3s ease-in-out infinite; }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">
+    <svg viewBox="0 0 28 28" fill="none">
+      <polygon points="4,4 24,14 4,24" fill="none" stroke="#00e5ff" stroke-width="2.5" stroke-linejoin="round"/>
+      <polygon points="4,4 24,14 4,24" fill="rgba(0,229,255,0.1)"/>
+    </svg>
+    Dashboard
+  </div>
+  <div class="search-bar">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" placeholder="Search…">
+  </div>
+  <div class="user-info">
+    <div>
+      <div class="user-name">Andy Brown</div>
+      <div class="user-logout">⊖ Logout</div>
+    </div>
+    <div class="avatar">👤</div>
+    <div class="icon-btn">⚙</div>
+    <div class="icon-btn">🔊</div>
+  </div>
+</div>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="nav-icon active">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    </div>
+    <div class="nav-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </div>
+    <div class="nav-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    </div>
+    <div class="nav-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    </div>
+    <div class="nav-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </div>
+    <div class="nav-icon" style="margin-top:auto">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></svg>
+      <div class="nav-badge">1</div>
+    </div>
+    <div class="nav-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14"/><path d="M4.93 4.93a10 10 0 000 14.14"/></svg>
+    </div>
+    <div class="nav-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main" id="mainContent">
+    <!-- ROW 1 -->
+    <div class="grid-row row-top">
+      <!-- Card 1: Mini Sparkline -->
+      <div class="card">
+        <div class="card-title">Lorem dolor sit amet</div>
+        <div class="spark-card">
+          <canvas id="sparkLine" height="50"></canvas>
+          <div class="donut-small">
+            <canvas id="donutSmall1"></canvas>
+            <div class="donut-label">60%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Main Line Chart -->
+      <div class="card" style="grid-column: span 1;">
+        <div class="chart-header">
+          <div class="chart-tab active"><span class="dot" style="background:var(--accent-cyan)"></span>Data analysis</div>
+          <div class="chart-tab"><span class="dot" style="background:var(--accent-purple)"></span>2020</div>
+          <div class="chart-tab"><span class="dot" style="background:var(--accent-pink)"></span>Monthly</div>
+        </div>
+        <canvas id="mainLineChart" height="130"></canvas>
+        <div class="stat-row">
+          <div class="stat-box"><span>01</span><strong>9,100</strong><span class="delta up">▲ +0.44%</span></div>
+          <div class="stat-box"><span>02</span><strong>5,320</strong><span class="delta up">▲ +8.27%</span></div>
+          <div class="stat-box"><span>03</span><strong>3,870</strong><span class="delta down">▼ -2.10%</span></div>
+          <div class="stat-box"><span>04</span><strong>7,140</strong><span class="delta up">▲ +0.11%</span></div>
+        </div>
+      </div>
+
+      <!-- Card 3: Candlestick / Wave Chart -->
+      <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between">
+          <span>Market Data</span><span style="color:var(--text-muted);font-size:0.65rem">Jan — Dec</span>
+        </div>
+        <canvas id="candleChart" height="100"></canvas>
+        <p style="font-size:0.65rem;color:var(--text-muted);margin-top:8px">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus nec eros enim.</p>
+      </div>
+
+      <!-- Card 4: Radar -->
+      <div class="card">
+        <div class="card-title">Lorem ipsum</div>
+        <div class="radar-wrap">
+          <canvas id="radarChart" width="180" height="180"></canvas>
+        </div>
+        <p style="font-size:0.65rem;color:var(--text-muted);margin-top:6px">Vivamus nec eros enim. Aliquam erat volutpat.</p>
+      </div>
+    </div>
+
+    <!-- ROW 2 -->
+    <div class="grid-row" style="grid-template-columns:300px 1fr 1fr">
+      <!-- Card: Schedule / Hex -->
+      <div class="card">
+        <div class="time-labels">
+          <span>9:30<br>M</span><span>10:00<br>T</span><span>10:30<br>W</span>
+          <span>11:00<br>T</span><span>11:30<br>F</span><span>12:00<br>S</span><span>12:30<br>S</span>
+        </div>
+        <div class="hex-container">
+          <canvas id="hexChart" width="160" height="140"></canvas>
+        </div>
+        <div class="progress-bars">
+          <div class="pb-row"><label>M</label><div class="pb-track"><div class="pb-fill" style="width:80%"></div></div></div>
+          <div class="pb-row"><label>T</label><div class="pb-track"><div class="pb-fill" style="width:60%;background:var(--accent-purple)"></div></div></div>
+          <div class="pb-row"><label>W</label><div class="pb-track"><div class="pb-fill" style="width:90%;background:var(--accent-pink)"></div></div></div>
+          <div class="pb-row"><label>T</label><div class="pb-track"><div class="pb-fill" style="width:45%;background:var(--accent-green)"></div></div></div>
+          <div class="pb-row"><label>F</label><div class="pb-track"><div class="pb-fill" style="width:70%"></div></div></div>
+          <div class="pb-row"><label>S</label><div class="pb-track"><div class="pb-fill" style="width:30%;background:var(--accent-orange)"></div></div></div>
+          <div class="pb-row"><label>S</label><div class="pb-track"><div class="pb-fill" style="width:55%;background:var(--accent-purple)"></div></div></div>
+        </div>
+        <p style="font-size:0.6rem;color:var(--text-muted);margin-top:8px">Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+      </div>
+
+      <!-- Card: Big Donut -->
+      <div class="card">
+        <div class="card-title">Distribution Overview</div>
+        <div class="big-donut-wrap">
+          <div class="big-donut-rel">
+            <canvas id="bigDonut"></canvas>
+            <div class="big-donut-center">
+              <strong>5371</strong>
+              <div style="font-size:0.6rem;color:var(--text-muted)">Total</div>
+            </div>
+          </div>
+          <div class="legend-list">
+            <div class="legend-item"><div class="legend-dot" style="background:#00e5ff"></div><span>Dolor sit — 21%</span></div>
+            <div class="legend-item"><div class="legend-dot" style="background:#7c4dff"></div><span>Consectetur — 17%</span></div>
+            <div class="legend-item"><div class="legend-dot" style="background:#e040fb"></div><span>Donec tortor — 15%</span></div>
+            <div class="legend-item"><div class="legend-dot" style="background:#ff6d00"></div><span>Nunc dapibus — 14%</span></div>
+            <div class="legend-item"><div class="legend-dot" style="background:#00e676"></div><span>Phasellus nibh — 13%</span></div>
+            <div class="legend-item"><div class="legend-dot" style="background:#ffea00"></div><span>Consectetur — 10%</span></div>
+            <div class="legend-item"><div class="legend-dot" style="background:#f44336"></div><span>Nunc — 10%</span></div>
+          </div>
+        </div>
+        <p style="font-size:0.6rem;color:var(--text-muted);margin-top:8px">Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+      </div>
+
+      <!-- Card: Growth + Bar -->
+      <div class="card">
+        <div class="chart-header">
+          <div class="chart-tab active"><span class="dot" style="background:var(--accent-cyan)"></span>2020</div>
+          <div class="chart-tab"><span class="dot" style="background:var(--accent-purple)"></span>Monthly</div>
+        </div>
+        <div class="growth-val">+47%</div>
+        <canvas id="growthBar" height="100"></canvas>
+        <p style="font-size:0.6rem;color:var(--text-muted);margin-top:8px">Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+      </div>
+    </div>
+
+    <!-- ROW 3: Small donuts -->
+    <div class="card">
+      <div class="donut-row">
+        <div class="donut-item">
+          <canvas id="sd1" width="70" height="70"></canvas>
+          <div class="pct">64%</div>
+          <div class="lbl">Lorem ipsum dolor sit amet, consectetur</div>
+        </div>
+        <div class="donut-item">
+          <canvas id="sd2" width="70" height="70"></canvas>
+          <div class="pct">58%</div>
+          <div class="lbl">Vivamus quam eos, condimentum nec lacus non</div>
+        </div>
+        <div class="donut-item">
+          <canvas id="sd3" width="70" height="70"></canvas>
+          <div class="pct">62%</div>
+          <div class="lbl">Fusce vitae varius duis, Etiam non arcu vel tortor</div>
+        </div>
+        <div class="donut-item">
+          <canvas id="sd4" width="70" height="70"></canvas>
+          <div class="pct">76%</div>
+          <div class="lbl">Sed porta euismod mi at tempus odio blandit</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUPPORT BAR -->
+    <div class="support-bar">
+      <span style="font-size:0.7rem;background:rgba(0,0,0,0.2);padding:2px 8px;border-radius:4px">24/7</span>
+      <span>Support Service</span>
+      <div class="support-icons">
+        <span>📞</span><span>✉</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── HELPERS ──────────────────────────────────────────────
+const C = (id) => document.getElementById(id);
+const rand = (min, max, n) => Array.from({length:n}, () => Math.floor(Math.random()*(max-min)+min));
+const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+const gridColor = 'rgba(100,140,255,0.08)';
+const tickColor = 'rgba(120,150,200,0.5)';
+
+const baseOpts = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+  scales: {
+    x: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 9 } } },
+    y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 9 } } }
+  }
+};
+
+// ── SPARK LINE ──────────────────────────────────────────
+new Chart(C('sparkLine'), {
+  type: 'line',
+  data: {
+    labels: ['','','','','','','',''],
+    datasets: [{
+      data: [30,50,40,70,55,80,60,75],
+      borderColor: '#00e5ff', borderWidth: 2,
+      fill: true,
+      backgroundColor: (ctx) => {
+        const g = ctx.chart.ctx.createLinearGradient(0,0,0,60);
+        g.addColorStop(0,'rgba(0,229,255,0.3)'); g.addColorStop(1,'rgba(0,229,255,0)');
+        return g;
+      },
+      tension: 0.4, pointRadius: 0
+    }]
+  },
+  options: { ...baseOpts, scales: { x:{display:false}, y:{display:false} } }
+});
+
+// ── DONUT SMALL 1 ──────────────────────────────────────
+new Chart(C('donutSmall1'), {
+  type: 'doughnut',
+  data: { datasets: [{ data: [60,40], backgroundColor: ['#00e5ff','rgba(0,229,255,0.1)'], borderWidth: 0 }] },
+  options: { cutout: '72%', plugins: { legend:{display:false}, tooltip:{enabled:false} } }
+});
+
+// ── MAIN LINE CHART ─────────────────────────────────────
+const makeGrad = (ctx, c1, c2) => {
+  const g = ctx.createLinearGradient(0,0,0,200);
+  g.addColorStop(0, c1); g.addColorStop(1, c2); return g;
+};
+const mlCtx = C('mainLineChart').getContext('2d');
+new Chart(mlCtx, {
+  type: 'line',
+  data: {
+    labels: months,
+    datasets: [
+      {
+        label: 'Series A',
+        data: [1000, 3000, 2500, 4500, 5800, 4200, 7100, 5000, 3500, 3000, 2800, 2000],
+        borderColor: '#00e5ff', borderWidth: 2.5, tension: 0.4, pointRadius: 0,
+        fill: true,
+        backgroundColor: makeGrad(mlCtx, 'rgba(0,229,255,0.25)', 'rgba(0,229,255,0)')
+      },
+      {
+        label: 'Series B',
+        data: [500, 1200, 1000, 2000, 2200, 1800, 3000, 2800, 2200, 2600, 3200, 2500],
+        borderColor: '#7c4dff', borderWidth: 2, tension: 0.4, pointRadius: 0, fill: false
+      }
+    ]
+  },
+  options: {
+    ...baseOpts,
+    scales: {
+      x: { grid:{color:gridColor}, ticks:{color:tickColor,font:{size:9}} },
+      y: { min:0, max:9000, grid:{color:gridColor}, ticks:{color:tickColor,font:{size:9},stepSize:1000} }
+    }
+  }
+});
+
+// ── CANDLE / AREA CHART ─────────────────────────────────
+const ccCtx = C('candleChart').getContext('2d');
+new Chart(ccCtx, {
+  type: 'line',
+  data: {
+    labels: months,
+    datasets: [
+      {
+        data: [2000,2500,1800,3000,3200,2700,3500,3100,2900,3400,3600,3000],
+        borderColor: '#00e676', borderWidth: 2, tension: 0.4, pointRadius: 0,
+        fill: true, backgroundColor: makeGrad(ccCtx,'rgba(0,230,118,0.3)','rgba(0,230,118,0)')
+      },
+      {
+        data: [3000,3500,3200,4000,4200,3800,4500,4100,3900,4400,4600,4200],
+        borderColor: '#e040fb', borderWidth: 2, tension: 0.4, pointRadius: 0, fill: false
+      }
+    ]
+  },
+  options: { ...baseOpts, scales: { x:{display:false}, y:{display:false} } }
+});
+
+// ── RADAR CHART ─────────────────────────────────────────
+new Chart(C('radarChart'), {
+  type: 'radar',
+  data: {
+    labels: ['Lorem','Dolor sit','Consectetur','Adipiscing','Moldy non','Phasellus'],
+    datasets: [
+      {
+        data: [65,80,70,90,60,75],
+        borderColor: '#7c4dff', backgroundColor: 'rgba(124,77,255,0.2)',
+        borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#7c4dff'
+      },
+      {
+        data: [50,60,80,55,85,65],
+        borderColor: '#e040fb', backgroundColor: 'rgba(224,64,251,0.15)',
+        borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#e040fb'
+      }
+    ]
+  },
+  options: {
+    responsive: false,
+    plugins: { legend:{display:false} },
+    scales: {
+      r: {
+        grid: { color: gridColor },
+        ticks: { display: false },
+        pointLabels: { color: tickColor, font: { size: 8 } },
+        min: 0, max: 100
+      }
+    }
+  }
+});
+
+// ── HEX CHART (polygon) ─────────────────────────────────
+(function drawHex() {
+  const canvas = C('hexChart');
+  const ctx = canvas.getContext('2d');
+  const cx = 80, cy = 70, r = 55;
+  const sides = 6;
+
+  function hexPoints(cx, cy, r) {
+    return Array.from({length:sides}, (_,i) => {
+      const a = (Math.PI/3)*i - Math.PI/2;
+      return [cx + r*Math.cos(a), cy + r*Math.sin(a)];
+    });
+  }
+
+  // Grid rings
+  for (let ring=1; ring<=4; ring++) {
+    const pts = hexPoints(cx, cy, r*(ring/4));
+    ctx.beginPath();
+    pts.forEach(([x,y], i) => i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y));
+    ctx.closePath();
+    ctx.strokeStyle = 'rgba(100,140,255,0.15)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+  // Spokes
+  hexPoints(cx,cy,r).forEach(([x,y]) => {
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(x,y);
+    ctx.strokeStyle='rgba(100,140,255,0.15)'; ctx.lineWidth=1; ctx.stroke();
+  });
+
+  // Data polygon
+  const vals = [0.7,0.85,0.6,0.9,0.75,0.65];
+  const dpts = vals.map((v,i) => {
+    const [x,y] = hexPoints(cx,cy,r*v)[i];
+    return [x,y];
+  });
+  ctx.beginPath();
+  dpts.forEach(([x,y],i) => i===0?ctx.moveTo(x,y):ctx.lineTo(x,y));
+  ctx.closePath();
+  const g = ctx.createRadialGradient(cx,cy,0,cx,cy,r);
+  g.addColorStop(0,'rgba(100,180,255,0.6)');
+  g.addColorStop(1,'rgba(21,101,255,0.2)');
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.strokeStyle = '#00e5ff'; ctx.lineWidth = 2; ctx.stroke();
+
+  // Center glowing dot
+  const radG = ctx.createRadialGradient(cx,cy,0,cx,cy,20);
+  radG.addColorStop(0,'rgba(100,180,255,0.9)');
+  radG.addColorStop(1,'rgba(21,101,255,0)');
+  ctx.beginPath(); ctx.arc(cx,cy,20,0,Math.PI*2);
+  ctx.fillStyle=radG; ctx.fill();
+})();
+
+// ── BIG DONUT ───────────────────────────────────────────
+new Chart(C('bigDonut'), {
+  type: 'doughnut',
+  data: {
+    datasets: [{
+      data: [21,17,15,14,13,10,10],
+      backgroundColor: ['#00e5ff','#7c4dff','#e040fb','#ff6d00','#00e676','#ffea00','#f44336'],
+      borderWidth: 2, borderColor: '#0d1640'
+    }]
+  },
+  options: {
+    cutout: '60%',
+    plugins: { legend:{display:false}, tooltip:{ callbacks:{
+      label: (ctx) => ` ${ctx.label}: ${ctx.parsed}%`
+    }}}
+  }
+});
+
+// ── GROWTH BAR ──────────────────────────────────────────
+const gbCtx = C('growthBar').getContext('2d');
+new Chart(gbCtx, {
+  type: 'bar',
+  data: {
+    labels: ['Mar','Apr','May','Jun','Jul'],
+    datasets: [{
+      data: [30,45,35,60,80],
+      backgroundColor: (ctx) => {
+        const g = ctx.chart.ctx.createLinearGradient(0,0,0,100);
+        g.addColorStop(0,'rgba(0,229,255,0.8)'); g.addColorStop(1,'rgba(0,229,255,0.1)');
+        return g;
+      },
+      borderRadius: 4
+    }]
+  },
+  options: {
+    ...baseOpts,
+    scales: {
+      x: { grid:{display:false}, ticks:{color:tickColor,font:{size:9}} },
+      y: { display:false }
+    }
+  }
+});
+
+// ── SMALL DONUTS ────────────────────────────────────────
+[[64,'#00e5ff'],[58,'#7c4dff'],[62,'#e040fb'],[76,'#00e676']].forEach(([val,color],i) => {
+  new Chart(C('sd'+(i+1)), {
+    type: 'doughnut',
+    data: { datasets: [{ data:[val,100-val], backgroundColor:[color,'rgba(255,255,255,0.05)'], borderWidth:0 }] },
+    options: { cutout:'72%', plugins:{legend:{display:false},tooltip:{enabled:false}} }
+  });
+});
+</script>
+</body>
+</html>
